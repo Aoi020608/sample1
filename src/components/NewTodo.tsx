@@ -1,8 +1,8 @@
 import React, { useRef } from "react";
 
 type NewTodoProps = {
-    onAddTodo: (todoText: string) => void;
-}
+  onAddTodo: (todoText: string) => void;
+};
 
 const NewTodo: React.FC<NewTodoProps> = (props) => {
   const textInputRef = useRef<HTMLInputElement>(null);
