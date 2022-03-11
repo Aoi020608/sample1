@@ -24,6 +24,16 @@ where
     }
 }
 
+#[derive(Clone)]
+pub struct List<T>
+where
+    T: Sized + Clone,
+{
+    head: Link<T>,
+    tail: Link<T>,
+    pub length: usize,
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
