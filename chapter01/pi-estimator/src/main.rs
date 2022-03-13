@@ -1,5 +1,6 @@
 // declare the module by its file name
 mod rounding;
+mod example;
 
 // Rust will also accept if you implement it right away
 mod printer {
