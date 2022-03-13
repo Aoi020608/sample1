@@ -34,6 +34,33 @@ where
     pub length: usize,
 }
 
+impl<T> List<T>
+where
+    T: Sized + Clone,
+{
+    pub fn new_empty() -> List<T> {
+        List {
+            head: None,
+            tail: None,
+            length: 0,
+        }
+    }
+
+    pub fn append(&mut self, value: T) {
+        let new = Node::new(value);
+        match self.tail.take() {
+            Some(old) => old.borrow_mut().next = Some(new.clone()),
+            None => self.head = Some(new.clone()),
+        }
+        self.length += 1;
+        self.tail = Some(new);
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
