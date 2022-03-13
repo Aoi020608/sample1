@@ -1,3 +1,9 @@
+#![feature(test)]
+#![doc(
+    html_logo_url = "https://blog.x5ff.xyz/img/main/logo.png",
+    test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
+)]
+
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -57,12 +63,36 @@ where
     }
 
     pub fn pop(&mut self) -> Option<T> {
-        
+        self.head.take().map(|head| {
+            if let Some(next) = head.borrow_mut().next.take() {
+                self.head = Some(next);
+            } else {
+                self.tail.take();
+            }
+            self.length -= 1;
+            Rc::try_unwrap(head)
+                .ok()
+                .expect("Something is terribly wrong")
+                .into_inner()
+                .value
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    extern crate test;
+    use test::Bencher;
+
+    #[bench]
+    fn bench_list_append(b: &mut Bencher) {
+        let mut list = List::new_empty();
+        b.iter(|| {
+            list.append(10);
+        })
+    }
+
     #[test]
     fn it_works() {
         let result = 2 + 2;
