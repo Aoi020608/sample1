@@ -4,38 +4,43 @@ use solana_program::{
     entrypoint,
     entrypoint::ProgramResult,
     msg,
+    program::invoke_signed,
     program_error::ProgramError,
     pubkey::Pubkey,
+    system_instruction,
 };
 
+entrypoint!(process_instruction);
+
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct GreetingAccount {
-    pub counter: u32,
+pub struct InstructionData {
+    pub vault_bump_seed: u8,
+    pub lamports: u64,
 }
 
-entrypoint!(process_instruction);
+pub static VAULT_ACCOUNT_SIZE: u64 = 1024;
 
 pub fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    _instruction_data: &[u8],
+    instruction_data: &[u8],
 ) -> ProgramResult {
-    msg!("Hello world Rust program entrypoint");
+    let account_info_iter = &mut accounts.iter();
+    let payer = next_account_info(account_info_iter)?;
 
-    let accounts_iter = &mut accounts.iter();
+    let vault = next_account_info(account_info_iter)?;
+    let system_program = next_account_info(account_info_iter)?;
 
-    let account = next_account_info(accounts_iter)?;
+    let mut instruction_data = instruction_data;
+    let instr = InstructionData::deserialize(&mut instruction_data)?;
+    let vault_bump_seed = instr.vault_bump_seed;
+    let lamports = instr.lamports;
+    let vault_size = VAULT_ACCOUNT_SIZE;
 
-    if account.owner != program_id {
-        msg!("Greeted account does not have the correct program id");
-        return Err(ProgramError::IncorrectProgramId);
-    }
-
-    let mut greeting_account = GreetingAccount::try_from_slice(&account.data.borrow())?;
-    greeting_account.counter += 1;
-    greeting_account.serialize(&mut &mut account.data.borrow_mut()[..])?;
-
-    msg!("Greeted {} time(s)", greeting_account.counter);
-
+    invoke_signed(
+        &system_instruction::create_account(payer.key, vault.key, lamports, vault_size, program_id),
+        &[payer.clone(), vault.clone(), system_program.clone()],
+        &[&[b"vault", payer.key.as_ref(), &[vault_bump_seed]]],
+    )?;
     Ok(())
 }
