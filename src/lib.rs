@@ -1,6 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    borsh::try_from_slice_unchecked,
     entrypoint,
     entrypoint::ProgramResult,
     msg,
@@ -10,7 +11,6 @@ use solana_program::{
     pubkey::Pubkey,
     system_instruction, system_program,
     sysvar::{rent::Rent, Sysvar},
-    borsh::try_from_slice_unchecked,
 };
 
 // Declare and export the program's entrypoint
@@ -73,7 +73,8 @@ pub fn process_instruction(
         &[&[user.key.as_ref(), &[bump_seed]]],
     )?;
 
-    let mut account_data = try_from_slice_unchecked::<UserStake>(&user_derived_account.data.borrow()).unwrap();
+    let mut account_data =
+        try_from_slice_unchecked::<UserStake>(&user_derived_account.data.borrow()).unwrap();
 
     if account_data.is_initialized() {
         return Err(ProgramError::AccountAlreadyInitialized);
