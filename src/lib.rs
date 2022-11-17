@@ -7,40 +7,58 @@ use solana_program::{
     program::invoke_signed,
     program_error::ProgramError,
     pubkey::Pubkey,
-    system_instruction,
+    system_instruction, system_program,
+    program_pack::IsInitialized,
+    sysvar::{rent::Rent, Sysvar},
 };
 
+// Declare and export the program's entrypoint
 entrypoint!(process_instruction);
 
+const USER_STAKE_SIZE: usize = 1 + 8;
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct InstructionData {
-    pub vault_bump_seed: u8,
+pub struct UserStake {
+    pub is_initialized: bool,
     pub lamports: u64,
 }
 
-pub static VAULT_ACCOUNT_SIZE: u64 = 1024;
+impl IsInitialized for UserStake {
+    fn is_initialized(&self) -> bool {
+        self.is_initialized
+    }
+}
 
 pub fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    instruction_data: &[u8],
+    _instruction_data: &[u8],
 ) -> ProgramResult {
-    let account_info_iter = &mut accounts.iter();
-    let payer = next_account_info(account_info_iter)?;
+    msg!("Create PDA example program_id {}", program_id);
 
-    let vault = next_account_info(account_info_iter)?;
-    let system_program = next_account_info(account_info_iter)?;
+    let accounts_iter = &mut accounts.iter();
+    let user = next_account_info(accounts_iter)?;
+    let user_derived_account = next_account_info(accounts_iter)?;
+    let system_program_account = next_account_info(accounts_iter)?;
 
-    let mut instruction_data = instruction_data;
-    let instr = InstructionData::deserialize(&mut instruction_data)?;
-    let vault_bump_seed = instr.vault_bump_seed;
-    let lamports = instr.lamports;
-    let vault_size = VAULT_ACCOUNT_SIZE;
+    if !system_program::check_id(system_program_account.key) {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+
+    let (pda, bump_seed) = Pubkey::find_program_address(&[user.key.as_ref()], program_id);
+    if pda != *user_derived_account.key {
+        return Err(ProgramError::InvalidSeeds);
+    }
+
+    let rent_lamports = Rent::get()?.minimum_balance(USER_STAKE_SIZE);
+    msg!(
+        "user have to pay {} lamports for rent exemption of {} bytes",
+        rent_lamports,
+        USER_STAKE_SIZE
+    );
 
     invoke_signed(
-        &system_instruction::create_account(payer.key, vault.key, lamports, vault_size, program_id),
-        &[payer.clone(), vault.clone(), system_program.clone()],
-        &[&[b"vault", payer.key.as_ref(), &[vault_bump_seed]]],
+        &system_instruction::create_account(user.key, user_derived_account.key, rent_lamports, USER_STAKE_SIZE.try_into().unwrap(), program_id),
+        &[user.clone(), user_derived_account.clone(), system_program_account.clone()], &[&[user.key.as_ref(), &[bump_seed]]],
     )?;
     Ok(())
 }
