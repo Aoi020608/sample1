@@ -6,10 +6,11 @@ use solana_program::{
     msg,
     program::invoke_signed,
     program_error::ProgramError,
+    program_pack::IsInitialized,
     pubkey::Pubkey,
     system_instruction, system_program,
-    program_pack::IsInitialized,
     sysvar::{rent::Rent, Sysvar},
+    borsh::try_from_slice_unchecked,
 };
 
 // Declare and export the program's entrypoint
@@ -57,8 +58,31 @@ pub fn process_instruction(
     );
 
     invoke_signed(
-        &system_instruction::create_account(user.key, user_derived_account.key, rent_lamports, USER_STAKE_SIZE.try_into().unwrap(), program_id),
-        &[user.clone(), user_derived_account.clone(), system_program_account.clone()], &[&[user.key.as_ref(), &[bump_seed]]],
+        &system_instruction::create_account(
+            user.key,
+            user_derived_account.key,
+            rent_lamports,
+            USER_STAKE_SIZE.try_into().unwrap(),
+            program_id,
+        ),
+        &[
+            user.clone(),
+            user_derived_account.clone(),
+            system_program_account.clone(),
+        ],
+        &[&[user.key.as_ref(), &[bump_seed]]],
     )?;
+
+    let mut account_data = try_from_slice_unchecked::<UserStake>(&user_derived_account.data.borrow()).unwrap();
+
+    if account_data.is_initialized() {
+        return Err(ProgramError::AccountAlreadyInitialized);
+    }
+
+    account_data.lamports = 42;
+    account_data.is_initialized = true;
+
+    account_data.serialize(&mut &mut user_derived_account.data.borrow_mut()[..])?;
+
     Ok(())
 }
