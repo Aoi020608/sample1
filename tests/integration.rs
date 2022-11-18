@@ -26,8 +26,9 @@ fn test_validator_transaction() {
     solana_logger::setup_with_default("solana_program_runtime=debug");
     let program_id = Pubkey::new_unique();
 
-    let (test_validator, payer) =
-        TestValidatorGenesis::default().add_program("helloworld", program_id).start();
+    let (test_validator, payer) = TestValidatorGenesis::default()
+        .add_program("helloworld", program_id)
+        .start();
     let rpc_client = test_validator.get_rpc_client();
 
     let blockhash = rpc_client.get_latest_blockhash().unwrap();
@@ -36,7 +37,8 @@ fn test_validator_transaction() {
 
     const ALICE_INIT_BALANCE: u64 = 1_000_000_000;
     {
-        let tx = system_transaction::transfer(&payer, &alice.pubkey(), ALICE_INIT_BALANCE, blockhash);
+        let tx =
+            system_transaction::transfer(&payer, &alice.pubkey(), ALICE_INIT_BALANCE, blockhash);
         rpc_client.send_and_confirm_transaction(&tx).unwrap();
     }
 
@@ -57,12 +59,13 @@ fn test_validator_transaction() {
     );
     transaction.sign(&[&alice], blockhash);
 
-    rpc_client.send_and_confirm_transaction(&transaction).unwrap();
+    rpc_client
+        .send_and_confirm_transaction(&transaction)
+        .unwrap();
 
     let account_data = rpc_client.get_account_data(&alice_pda).unwrap();
     let user_stake = UserStake::try_from_slice(&account_data).unwrap();
 
     assert!(user_stake.is_initialized);
     assert_eq!(user_stake.lamports, 42);
-
 }
